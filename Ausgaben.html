@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome!</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@exampledev/new.css@1.1.3/new.min.css">
+    <style>
+        :invalid {
+            border-color: #ec5840;
+        }
+
+        :invalid~button {
+            /*buttons nach invaliden elementen unter gleichem parent sind disabled*/
+            opacity: .5;
+            pointer-events: none
+        }
+
+        .toggle label {
+            float: left;
+            font-size: 1.5rem;
+            width: 9rem;
+            margin-bottom: 0.5rem;
+            background-color: var(--nc-bg-3);
+        }
+
+        .toggle label span {
+            text-align: center;
+            display: block;
+            border-radius: 4px;
+        }
+
+        .toggle label input {
+            position: absolute;
+            top: -20px;
+        }
+
+        .payer input:checked+span {
+            background-color: var(--nc-lk-1);
+        }
+
+        .menu input:checked+span {
+            background-color: var(--nc-ac-1);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toggle menu" style="display:flex">
+        <label style="flex: 1 1 30%"><input type="radio" id="zahlungRadio" name="menuTabs" onclick="openTab(event, 'zahlungTab')" checked autocomplete="off"><span>Zahlung</span></label> <!-- autocomplete="off" damit FF sich checked state nicht merkt: https://stackoverflow.com/a/471140 -->
+        <label style="flex: 1 1 30%"><input type="radio" id="historyRadio" name="menuTabs" onclick="openTab(event, 'historyTab')" autocomplete="off"><span>History</span></label>
+    </div>
+    <div id="zahlungTab" class="tabcontent">
+        <div id="payerToggle" class="toggle payer" style="display:flex">
+            <label><input type="radio" id="andreasRadio" name="payer" onclick="document.getElementById('amount').focus();updateResult()" checked autocomplete="off"><span>Andreas</span></label>
+            <label><input type="radio" id="dagmarRadio" name="payer" onclick="document.getElementById('amount').focus();updateResult()" autocomplete="off"><span>Dagmar</span></label>
+        </div>
+        <form id="splitForm" autocomplete="off" onsubmit="return false;" style="display: grid;grid-template-columns: 12ch auto; align-items: baseline;">
+            <label for="amount">Betrag</label>
+            <input type="number" id="amount" name="amount" min="0" step="0.01" placeholder="Betrag" onfocus="this.select()" required>
+            <label for="andreasShareAbs">Andreas</label>
+            <input type="number" id="andreasShareAbs" name="andreasShareAbs" min="0" step="0.001" placeholder="Andreas Anteil" onfocus="this.select()">
+            <label for="dagmarShareAbs">Dagmar</label>
+            <input type="number" id="dagmarShareAbs" name="dagmarShareAbs" min="0" step="0.001" placeholder="Dagmar Anteil" onfocus="this.select()">
+            <label for="kategorie">Kategorie</label>
+            <select id="kategorie" name="kategorie" onchange="updateResult()">
+                <option value="Essen" selected>Essen</option>
+                <option value="Trinken">Trinken</option>
+                <option value="Amazon">Amazon</option>
+                <option value="Kultur">Kultur</option>
+                <option value="Unterkunft">Unterkunft</option>
+                <option value="Verschiedenes">Verschiedenes</option>
+                <option value="Geldtransfer">Geldtransfer</option>
+            </select>
+            <label for="dagmarShareAbs">Beschreibung</label>
+            <input id="beschreibung" name="beschreibung" placeholder="Grund der Zahlung">
+            <label for="zeitpunkt">Zeitpunkt</label>
+            <input type="datetime-local" id="zeitpunkt" name="zeitpunkt" placeholder="Zeitpunkt der Zahlung">
+            <div></div>
+            <button id="speichern">Speichern</button>
+        </form>
+    </div>
+    <div id="historyTab" class="tabcontent" style="display: none">
+        <textarea id="tempContent"></textarea>
+        <button type="button" onclick="download()">Save</button>
+    </div>
+    <script>
+        const andreasShareInput = document.getElementById('andreasShareAbs');
+        andreasShareInput.addEventListener('input', () => updateOtherShare(andreasShareInput, dagmarShareInput));
+        const dagmarShareInput = document.getElementById('dagmarShareAbs');
+        dagmarShareInput.addEventListener('input', () => updateOtherShare(dagmarShareInput, andreasShareInput));
+        const totalAmountInput = document.getElementById('amount');
+        totalAmountInput.addEventListener('input', setDefaultSplit);
+        const speichernButton = document.getElementById('speichern');
+        speichernButton.addEventListener('click', speichernClick);
+
+        function download() {
+            var text = document.getElementById("tempContent").value;
+            text = text.replace(/\n/g, "\r\n"); // To retain the Line breaks.
+            var anchor = document.createElement("a");
+            anchor.download = "ausgaben_" + Date.now() + ".txt";
+            anchor.href = window.URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+            anchor.target = "_blank";
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+        }
+
+        function openTab(evt, tabName) {
+            var tabcontent = document.getElementsByClassName("tabcontent");
+            Array.from(document.getElementsByClassName("tabcontent")).forEach(t => t.style.display = "none");
+            document.getElementById(tabName).style.display = "block";
+            if (tabName === "historyTab") {
+                document.getElementById("tempContent").innerText = JSON.stringify(localStorage);
+            }
+        }
+        // Setup DateTime with Now https://stackoverflow.com/questions/24468518/html5-input-datetime-local-default-value-of-today-and-current-time/60884408#60884408
+        var localDate = new Date(new Date() - new Date().getTimezoneOffset() * 60000);
+        localDate.setSeconds(null);
+        localDate.setMilliseconds(null);
+        localDate = localDate.toISOString().slice(0, -1);
+        document.getElementById("zeitpunkt").value = localDate;
+
+        // Automatically set default split to 50/50 when amount changes
+        function setDefaultSplit() {
+            const amount = parseFloat(totalAmountInput.value);
+            const half = amount / 2;
+            andreasShareInput.value = half.toFixed(3);
+            dagmarShareInput.value = half.toFixed(3);
+            updateResult();
+        }
+
+        function updateOtherShare(thisInput, otherInput) {
+            otherInput.value = (totalAmountInput.value - thisInput.value).toFixed(2);
+            updateResult();
+        }
+        function speichernClick() {
+            localStorage.setItem("ausg_" + Date.now(), JSON.stringify({
+                a: parseFloat(andreasShareInput.value),
+                d: parseFloat(dagmarShareInput.value),
+                b: document.getElementById('beschreibung').value,
+                k: document.getElementById('kategorie').value,
+                z: document.getElementById('zeitpunkt').value,
+            }));
+        }
+
+        function updateResult() {
+            const geldtransfer = document.getElementById('kategorie').value == "Geldtransfer";
+            const amount = parseFloat(totalAmountInput.value);
+            let andreasAmount = parseFloat(andreasShareInput.value);
+            let dagmarAmount = parseFloat(dagmarShareInput.value);
+
+            if (geldtransfer || isNaN(amount) || amount <= 0) { // Geldtransfer erlaubt keinen custom split sondern ist immer 100% bei der Gegenseite
+                andreasShareInput.disabled = true;
+                dagmarShareInput.disabled = true;
+                if (geldtransfer) {
+                    const amount = parseFloat(totalAmountInput.value);
+                    andreasShareInput.value = document.querySelector('input[name = payer]:checked').id == "andreasRadio" ? "0" : amount;
+                    dagmarShareInput.value = andreasShareInput.value == "0" ? amount : "0";
+                }
+                return;
+            }
+            andreasShareInput.disabled = false;
+            dagmarShareInput.disabled = false;
+        }
+        updateResult();
+    </script>
+</body>
+
+</html>
