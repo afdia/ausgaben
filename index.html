@@ -43,6 +43,10 @@
         .menu input:checked+span {
             background-color: var(--nc-ac-1);
         }
+
+        tr:hover {
+            background-color: var(--nc-bg-3);
+        }
     </style>
 </head>
 
@@ -55,6 +59,7 @@
         <div id="payerToggle" class="toggle payer" style="display:flex">
             <label><input type="radio" id="andreasRadio" name="payer" onclick="document.getElementById('amount').focus();updateResult()" autocomplete="off"><span>Andreas</span></label>
             <label><input type="radio" id="dagmarRadio" name="payer" onclick="document.getElementById('amount').focus();updateResult()" autocomplete="off"><span>Dagmar</span></label>
+            <div id="editId"></div>
         </div>
         <form id="splitForm" autocomplete="off" onsubmit="return false;" style="display: grid;grid-template-columns: 12ch auto; align-items: baseline;">
             <label for="amount">Betrag</label>
@@ -77,8 +82,9 @@
             <input id="beschreibung" name="beschreibung" placeholder="Grund der Zahlung">
             <label for="zeitpunkt">Zeitpunkt</label>
             <input type="datetime-local" id="zeitpunkt" name="zeitpunkt" placeholder="Zeitpunkt der Zahlung">
+            <div></div><button id="speichern">Speichern</button>
             <div></div>
-            <button id="speichern">Speichern</button>
+            <div id="infoText"></div>
         </form>
     </div>
     <div id="historyTab" class="tabcontent" style="display: none">
@@ -94,42 +100,50 @@
         totalAmountInput.addEventListener('input', setDefaultSplit);
         const speichernButton = document.getElementById('speichern');
         speichernButton.addEventListener('click', speichernClick);
+        const tabcontent = document.getElementsByClassName("tabcontent");
+        const editIdDiv = document.getElementById('editId');
 
         function download() {
-            var text = document.getElementById("tempContent").value;
-            text = text.replace(/\n/g, "\r\n"); // To retain the Line breaks.
             var anchor = document.createElement("a");
             anchor.download = "ausgaben_" + Date.now() + ".txt";
-            anchor.href = window.URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+            const downloadContent = readLocalStorage().map(e => e[0] + "=" + e[1]).join("\n"); // relevanter localstorage content als key=value file
+            anchor.href = window.URL.createObjectURL(new Blob([downloadContent], { type: "text/plain" }));
             anchor.target = "_blank";
             document.body.appendChild(anchor);
             anchor.click();
             document.body.removeChild(anchor);
         }
-
+        function readLocalStorage() {
+            return Object.entries(localStorage).sort().reverse().filter(e => e[0].startsWith("ausg_"));
+        }
         function openTab(evt, tabName) {
-            var tabcontent = document.getElementsByClassName("tabcontent");
             Array.from(document.getElementsByClassName("tabcontent")).forEach(t => t.style.display = "none");
             document.getElementById(tabName).style.display = "block";
             if (tabName === "historyTab") {
                 let table = '<table><thead><tr><th>Zeitpunkt</th><th>Kategorie</th><th>Beschreibung</th><th>Andreas</th><th>Dagmar</th><th>Gesamt</th></tr></thead><tbody>';
-                Object.entries(localStorage).sort().reverse().forEach(entry => {
-                    if (entry[0].startsWith("ausg_")) {
-                        const json = JSON.parse(entry[1]);
-                        table += `<tr><td>${json.z}</td><td>${json.k}</td><td>${json.b}</td><td>${json.a}</td><td>${json.d}</td><td>${parseFloat(json.a) + parseFloat(json.d)}</td></tr>`
-                    }
+                readLocalStorage().forEach(entry => {
+                    const json = JSON.parse(entry[1]); // der Zeitpkt ist der mittlere Teil des LocalStorage Keys (eingegrenzt durch _) zb ausg_2025-10-31 10:44_1761903861769
+                    table += `<tr style="cursor: pointer" onClick="window.alert('line')"><td>${entry[0].split("_")[1]}</td><td>${json.k}</td><td>${json.b}</td><td>${json.a}</td><td>${json.d}</td><td>${parseFloat(json.a) + parseFloat(json.d)}</td><td><button onClick="deleteHist('${entry[0]}', event)">X</button></td></tr>`
                 });
                 table += '</tbody></table>';
                 document.getElementById('table-wrapper').innerHTML = table;
             }
         }
         // Setup DateTime with Now https://stackoverflow.com/questions/24468518/html5-input-datetime-local-default-value-of-today-and-current-time/60884408#60884408
-        var localDate = new Date(new Date() - new Date().getTimezoneOffset() * 60000);
-        localDate.setSeconds(null);
-        localDate.setMilliseconds(null);
-        localDate = localDate.toISOString().slice(0, -1);
-        document.getElementById("zeitpunkt").value = localDate;
+        var now = new Date();
+        var nowUpToMin = new Date(now - now.getTimezoneOffset() * 60000);
+        nowUpToMin.setSeconds(null);
+        nowUpToMin.setMilliseconds(null);
+        document.getElementById("zeitpunkt").value = nowUpToMin.toISOString().slice(0, -1); // schneide Z am Ende weg
 
+        function deleteHist(rowLocalStorageKey, event) {
+            if (window.confirm("Wirklich löschen?")) {
+                const thisTr = event.target.parentElement.parentElement;
+                thisTr.parentElement.removeChild(thisTr);
+                localStorage.removeItem(rowLocalStorageKey);
+            }
+            event.stopPropagation(); // das line click event soll nicht triggern
+        }
         // Automatically set default split to 50/50 when amount changes
         function setDefaultSplit() {
             const amount = parseFloat(totalAmountInput.value);
@@ -144,13 +158,16 @@
             updateResult();
         }
         function speichernClick() { // die Keys enthalten den Zeitpkt damit die Sortierung danach passiert
-            localStorage.setItem("ausg_" + document.getElementById('zeitpunkt').value, JSON.stringify({
+            const editId = editIdDiv.textContent !== "" ? editIdDiv.textContent : "ausg_" + document.getElementById('zeitpunkt').value.replace("T", " ") + "_" + Date.now();
+            localStorage.setItem(editId, JSON.stringify({ // nachdem die Zeit nur min-genau ist steht am Ende ein epochMs Suffix
                 a: parseFloat(andreasShareInput.value),
                 d: parseFloat(dagmarShareInput.value),
                 b: document.getElementById('beschreibung').value,
                 k: document.getElementById('kategorie').value,
-                z: document.getElementById('zeitpunkt').value.replace("T", " "),
             }));
+            document.getElementById('editId').textContent = editId;
+            document.getElementById('zeitpunkt').readOnly = true;
+            document.getElementById('infoText').textContent = "Ausgabe wurde gespeichert und kann bis auf den Zeitpunkt editiert werden";
         }
 
         function updateResult() {
