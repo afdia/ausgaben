@@ -52,14 +52,13 @@
 
 <body>
     <div class="toggle menu" style="display:flex">
-        <label style="flex: 1 1 30%"><input type="radio" id="zahlungRadio" name="menuTabs" onclick="openTab(event, 'zahlungTab')" checked autocomplete="off"><span>Zahlung</span></label> <!-- autocomplete="off" damit FF sich checked state nicht merkt: https://stackoverflow.com/a/471140 -->
-        <label style="flex: 1 1 30%"><input type="radio" id="historyRadio" name="menuTabs" onclick="openTab(event, 'historyTab')" autocomplete="off"><span>History</span></label>
+        <label style="flex: 1 1 30%"><input type="radio" id="zahlungRadio" name="menuTabs" onclick="openTab('zahlungTab')" checked autocomplete="off"><span>Zahlung</span></label> <!-- autocomplete="off" damit FF sich checked state nicht merkt: https://stackoverflow.com/a/471140 -->
+        <label style="flex: 1 1 30%"><input type="radio" id="historyRadio" name="menuTabs" onclick="openTab('historyTab')" autocomplete="off"><span>History</span></label>
     </div>
     <div id="zahlungTab" class="tabcontent">
         <div id="payerToggle" class="toggle payer" style="display:flex">
             <label><input type="radio" id="andreasRadio" name="payer" onclick="document.getElementById('amount').focus();updateResult()" autocomplete="off"><span>Andreas</span></label>
             <label><input type="radio" id="dagmarRadio" name="payer" onclick="document.getElementById('amount').focus();updateResult()" autocomplete="off"><span>Dagmar</span></label>
-            <div id="editId"></div>
         </div>
         <form id="splitForm" autocomplete="off" onsubmit="return false;" style="display: grid;grid-template-columns: 12ch auto; align-items: baseline;">
             <label for="amount">Betrag</label>
@@ -82,7 +81,7 @@
             <input id="beschreibung" name="beschreibung" placeholder="Grund der Zahlung">
             <label for="zeitpunkt">Zeitpunkt</label>
             <input type="datetime-local" id="zeitpunkt" name="zeitpunkt" placeholder="Zeitpunkt der Zahlung">
-            <div></div><button id="speichern">Speichern</button>
+            <div></div><button id="speichern" onclick="speichernClick()">Speichern <span id="editId"></span></button>
             <div></div>
             <div id="infoText"></div>
         </form>
@@ -98,8 +97,6 @@
         dagmarShareInput.addEventListener('input', () => updateOtherShare(dagmarShareInput, andreasShareInput));
         const totalAmountInput = document.getElementById('amount');
         totalAmountInput.addEventListener('input', setDefaultSplit);
-        const speichernButton = document.getElementById('speichern');
-        speichernButton.addEventListener('click', speichernClick);
         const tabcontent = document.getElementsByClassName("tabcontent");
         const editIdDiv = document.getElementById('editId');
 
@@ -114,16 +111,16 @@
             document.body.removeChild(anchor);
         }
         function readLocalStorage() {
-            return Object.entries(localStorage).sort().reverse().filter(e => e[0].startsWith("ausg_"));
+            return Object.entries(localStorage).sort().reverse().filter(e => e[0].startsWith("Ausgabe#"));
         }
-        function openTab(evt, tabName) {
+        function openTab(tabName) {
             Array.from(document.getElementsByClassName("tabcontent")).forEach(t => t.style.display = "none");
             document.getElementById(tabName).style.display = "block";
             if (tabName === "historyTab") {
                 let table = '<table><thead><tr><th>Zeitpunkt</th><th>Kategorie</th><th>Beschreibung</th><th>Andreas</th><th>Dagmar</th><th>Gesamt</th></tr></thead><tbody>';
                 readLocalStorage().forEach(entry => {
-                    const json = JSON.parse(entry[1]); // der Zeitpkt ist der mittlere Teil des LocalStorage Keys (eingegrenzt durch _) zb ausg_2025-10-31 10:44_1761903861769
-                    table += `<tr style="cursor: pointer" onClick="window.alert('line')"><td>${entry[0].split("_")[1]}</td><td>${json.k}</td><td>${json.b}</td><td>${json.a}</td><td>${json.d}</td><td>${parseFloat(json.a) + parseFloat(json.d)}</td><td><button onClick="deleteHist('${entry[0]}', event)">X</button></td></tr>`
+                    const json = JSON.parse(entry[1]); // der Zeitpkt ist der mittlere Teil des LocalStorage Keys (eingegrenzt durch _) zb Ausgabe#2025-10-31 10:44_1761903861769
+                    table += `<tr style="cursor: pointer" onClick="rowClick('${entry[0]}','${json.k}','${json.b}','${json.a}','${json.d}')"><td>${entry[0].split("#")[1]}</td><td>${json.k}</td><td>${json.b}</td><td>${json.a}</td><td>${json.d}</td><td>${add(json.a, json.d)}</td><td><button onClick="deleteClick('${entry[0]}', event)">X</button></td></tr>`
                 });
                 table += '</tbody></table>';
                 document.getElementById('table-wrapper').innerHTML = table;
@@ -136,7 +133,20 @@
         nowUpToMin.setMilliseconds(null);
         document.getElementById("zeitpunkt").value = nowUpToMin.toISOString().slice(0, -1); // schneide Z am Ende weg
 
-        function deleteHist(rowLocalStorageKey, event) {
+        function add(a, d) {
+            return parseFloat(a) + parseFloat(d);
+        }
+        function rowClick(localStorageKey, k, b, a, d) {
+            editIdDiv.textContent = localStorageKey;
+            andreasShareInput.value = a;
+            dagmarShareInput.value = d;
+            document.getElementById('amount').value = add(a, d);
+            document.getElementById('beschreibung').value = b;
+            document.getElementById('kategorie').value = k;
+            document.getElementById('zahlungRadio').checked = true;
+            openTab('zahlungTab');
+        }
+        function deleteClick(rowLocalStorageKey, event) {
             if (window.confirm("Wirklich löschen?")) {
                 const thisTr = event.target.parentElement.parentElement;
                 thisTr.parentElement.removeChild(thisTr);
@@ -158,7 +168,7 @@
             updateResult();
         }
         function speichernClick() { // die Keys enthalten den Zeitpkt damit die Sortierung danach passiert
-            const editId = editIdDiv.textContent !== "" ? editIdDiv.textContent : "ausg_" + document.getElementById('zeitpunkt').value.replace("T", " ") + "_" + Date.now();
+            const editId = editIdDiv.textContent !== "" ? editIdDiv.textContent : "Ausgabe#" + document.getElementById('zeitpunkt').value.replace("T", " ") + "#" + Date.now();
             localStorage.setItem(editId, JSON.stringify({ // nachdem die Zeit nur min-genau ist steht am Ende ein epochMs Suffix
                 a: parseFloat(andreasShareInput.value),
                 d: parseFloat(dagmarShareInput.value),
