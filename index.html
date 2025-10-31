@@ -47,6 +47,11 @@
         tr:hover {
             background-color: var(--nc-bg-3);
         }
+
+        .fadeout {
+            opacity: 0;
+            transition: visibility 0s 2s, opacity 2s linear;
+        }
     </style>
 </head>
 
@@ -136,6 +141,7 @@
         function add(a, d) {
             return parseFloat(a) + parseFloat(d);
         }
+
         function rowClick(localStorageKey, k, b, a, d) {
             editIdDiv.textContent = localStorageKey;
             andreasShareInput.value = a;
@@ -178,6 +184,9 @@
             document.getElementById('editId').textContent = editId;
             document.getElementById('zeitpunkt').readOnly = true;
             document.getElementById('infoText').textContent = "Ausgabe wurde gespeichert und kann bis auf den Zeitpunkt editiert werden";
+            document.getElementById('infoText').className = "";
+            document.getElementById('infoText').offsetHeight; // trigger reflow https://stackoverflow.com/a/45036752
+            document.getElementById('infoText').className = "fadeout";
         }
 
         function updateResult() {
