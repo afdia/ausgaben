@@ -57,18 +57,18 @@
 
 <body>
     <div class="toggle menu" style="display:flex">
-        <label style="flex: 1 1 30%"><input type="radio" id="zahlungRadio" name="menuTabs" onclick="openTab('zahlungTab')" checked autocomplete="off"><span>Zahlung</span></label> <!-- autocomplete="off" damit FF sich checked state nicht merkt: https://stackoverflow.com/a/471140 -->
-        <label style="flex: 1 1 30%"><input type="radio" id="historyRadio" name="menuTabs" onclick="openTab('historyTab')" autocomplete="off"><span>History</span></label>
+        <label style="flex: 1 1 auto"><input type="radio" id="zahlungRadio" name="menuTabs" onclick="openTab('zahlungTab')" checked autocomplete="off"><span>Zahlung</span></label> <!-- autocomplete="off" damit FF sich checked state nicht merkt: https://stackoverflow.com/a/471140 -->
+        <label style="flex: 1 1 auto"><input type="radio" id="historyRadio" name="menuTabs" onclick="openTab('historyTab')" autocomplete="off"><span>History</span></label>
     </div>
     <div id="zahlungTab" class="tabcontent">
         <div id="payerToggle" class="toggle payer" style="display:flex">
-            <label><input type="radio" id="andreasRadio" name="payer" onclick="document.getElementById('amount').focus();updatePersonAmounts()" autocomplete="off" checked><span>Andreas</span></label>
-            <label><input type="radio" id="dagmarRadio" name="payer" onclick="document.getElementById('amount').focus();updatePersonAmounts()" autocomplete="off"><span>Dagmar</span></label>
-            <div style="font-size:1.3em;margin-left:0.8em" id="schulden"></div>
+            <label style="flex: 1 1 auto"><input type="radio" id="andreasRadio" name="payer" onclick="document.getElementById('amount').focus();updatePersonAmounts()" autocomplete="off" checked><span>Andreas</span></label>
+            <label style="flex: 1 1 auto"><input type="radio" id="dagmarRadio" name="payer" onclick="document.getElementById('amount').focus();updatePersonAmounts()" autocomplete="off"><span>Dagmar</span></label>
         </div>
+        <div style="font-size:1.3rem;margin-bottom: 0.5rem" id="schulden"></div>
         <form id="splitForm" autocomplete="off" onsubmit="return false;" style="display: grid;grid-template-columns: 12ch auto; align-items: baseline; column-gap: 0.5em">
             <label for="amount">Betrag</label>
-            <input type="number" id="amount" name="amount" min="0" step="0.01" placeholder="Betrag" onfocus="this.select()" required>
+            <input type="number" id="amount" name="amount" min="0" step="0.01" onfocus="this.select()" required>
             <label for="andreasShareAbs">Andreas</label>
             <input type="number" id="andreasShareAbs" name="andreasShareAbs" min="0" step="0.001" placeholder="Andreas Anteil" onfocus="this.select()">
             <label for="dagmarShareAbs">Dagmar</label>
@@ -131,7 +131,7 @@
                     const json = JSON.parse(entry[1]); // der Zeitpkt ist der mittlere Teil des LocalStorage Keys (eingegrenzt durch _) zb Ausgabe#2025-10-31 10:44_1761903861769
                     const zeitpunkt = entry[0].split("#")[1];
                     const payer = json.s < 0 ? 'A' : 'D';
-                    table += `<tr style="cursor: pointer" onClick="rowClick('${entry[0]}','${zeitpunkt}','${json.k}','${json.b}','${json.a}','${json.d}','${payer}')"><td>${zeitpunkt}</td><td>${json.k}</td><td>${json.b}</td><td>${payer + '('+ json.s +')'}</td><td>${json.a}</td><td>${json.d}</td><td>${add(json.a, json.d)}</td><td><button onClick="deleteClick('${entry[0]}', event)">X</button></td></tr>`
+                    table += `<tr style="cursor: pointer" onClick="rowClick('${entry[0]}','${zeitpunkt}','${json.k}','${json.b}','${json.a}','${json.d}','${payer}')"><td>${zeitpunkt}</td><td>${json.k}</td><td>${json.b}</td><td>${payer + '(' + json.s + ')'}</td><td>${json.a}</td><td>${json.d}</td><td>${add(json.a, json.d)}</td><td><button onClick="deleteClick('${entry[0]}', event)">X</button></td></tr>`
                 });
                 table += '</tbody></table>';
                 document.getElementById('table-wrapper').innerHTML = table;
@@ -204,17 +204,18 @@
             updateSchulden();
         }
         function updateSchulden() {
-            const sum= readLocalStorage().map(entry => {
+            const sum = readLocalStorage().map(entry => {
                 const json = JSON.parse(entry[1]);
                 return json.s;
             }).reduce((a, b) => a + b, 0);
-            document.getElementById('schulden').textContent = sum > 0 ? "Andreas schuldet Dagmar " + sum + "€": "Dagmar schuldet Andreas " + (-sum) + "€";
+            document.getElementById('schulden').textContent = sum > 0 ? "Andreas schuldet Dagmar " + sum + "€" : "Dagmar schuldet Andreas " + (-sum) + "€";
         }
         function setEditId(editId) {
             editIdDiv.textContent = editId;
             document.getElementById('zeitpunkt').readOnly = editId !== null;
         }
         function updatePersonAmounts() {
+            totalAmountInput.setAttribute("placeholder", "Betrag bezahlt von " + (document.getElementById('andreasRadio').checked ? 'Andreas' : 'Dagmar'));
             const geldtransfer = document.getElementById('kategorie').value == "Geldtransfer";
             const amount = parseFloat(totalAmountInput.value);
             let andreasAmount = parseFloat(andreasShareInput.value);
