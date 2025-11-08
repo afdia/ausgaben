@@ -44,6 +44,14 @@
             background-color: var(--nc-ac-1);
         }
 
+        table,
+        tr,
+        td {
+            border: none;
+            padding: 0px;
+            vertical-align: top;
+        }
+
         tr:hover {
             background-color: var(--nc-bg-3);
         }
@@ -87,10 +95,10 @@
             <input id="beschreibung" name="beschreibung" placeholder="Grund der Zahlung">
             <label for="zeitpunkt">Zeitpunkt</label>
             <input type="datetime-local" id="zeitpunkt" name="zeitpunkt" placeholder="Zeitpunkt der Zahlung">
-            <button id="neu" onclick="neuClick()">Neu</button><button id="speichern" onclick="speichernClick()">Speichern <span id="editId"></span></button>
+            <button id="neu" onclick="neuClick()">Neu</button><button style="white-space:break-spaces" id="speichern" onclick="speichernClick()">Speichern <span style="font-size:small" id="editId"></span></button>
             <div></div>
-            <div id="infoText"></div>
         </form>
+        <div id="infoText"></div>
     </div>
     <div id="historyTab" class="tabcontent" style="display: none">
         <div id="table-wrapper"></div>
@@ -126,12 +134,15 @@
             Array.from(document.getElementsByClassName("tabcontent")).forEach(t => t.style.display = "none");
             document.getElementById(tabName).style.display = "block";
             if (tabName === "historyTab") {
-                let table = '<table><thead><tr><th>Zeitpunkt</th><th>Kategorie</th><th>Beschreibung</th><th>Zahler</th><th>Andreas</th><th>Dagmar</th><th>Gesamt</th></tr></thead><tbody>';
+                let table = '<table><tbody>';
                 readLocalStorage().forEach(entry => {
                     const json = JSON.parse(entry[1]); // der Zeitpkt ist der mittlere Teil des LocalStorage Keys (eingegrenzt durch _) zb Ausgabe#2025-10-31 10:44_1761903861769
                     const zeitpunkt = entry[0].split("#")[1];
                     const payer = json.s < 0 ? 'A' : 'D';
-                    table += `<tr style="cursor: pointer" onClick="rowClick('${entry[0]}','${zeitpunkt}','${json.k}','${json.b}','${json.a}','${json.d}','${payer}')"><td>${zeitpunkt}</td><td>${json.k}</td><td>${json.b}</td><td>${payer + '(' + json.s + ')'}</td><td>${json.a}</td><td>${json.d}</td><td>${add(json.a, json.d)}</td><td><button onClick="deleteClick('${entry[0]}', event)">X</button></td></tr>`
+                    table += `<tr style="cursor: pointer" onClick="rowClick('${entry[0]}','${zeitpunkt}','${json.k}','${json.b}','${json.a}','${json.d}','${payer}')">
+                        <td>${zeitpunkt} ${json.k}<div style="font-size:small">${json.b}</div><div style="font-size:small">Von: ${payer + '(' + json.s + ')'} Belastet A:${json.a} D:${json.d}</div></td>
+                        <td style="text-align:right;padding-right:0.3rem;font-weight:bold;min-width:4rem">${add(json.a, json.d)}</td>
+                        <td style="width:0"><button onClick="deleteClick('${entry[0]}', event)">X</button></td></tr>`
                 });
                 table += '</tbody></table>';
                 document.getElementById('table-wrapper').innerHTML = table;
@@ -157,7 +168,7 @@
             document.getElementById('beschreibung').value = b;
             document.getElementById('kategorie').value = k;
             document.getElementById('zahlungRadio').checked = true;
-            document.getElementById(p == 'A' ? 'andreasRadio' : 'dagmarRadio').checked = true;
+            if (p != null) document.getElementById(p == 'A' ? 'andreasRadio' : 'dagmarRadio').checked = true; // wenn Payer übergeben wurde update den Radio-Button
             openTab('zahlungTab');
         }
         function deleteClick(rowLocalStorageKey, event) {
@@ -183,10 +194,10 @@
             updatePersonAmounts();
         }
         function neuClick() {
-            rowClick(null, dateNow(), '', '', '', '', '');
+            rowClick(null, dateNow(), '', '', '', '', null);
         }
         function speichernClick() { // die Keys enthalten den Zeitpkt damit die Sortierung danach passiert
-            const editId = editIdDiv.textContent !== "" ? editIdDiv.textContent : "Ausgabe#" + document.getElementById('zeitpunkt').value.replace("T", " ") + "#" + Date.now();
+            const editId = editIdDiv.innerText !== "" ? editIdDiv.innerText : "Ausgabe#" + document.getElementById('zeitpunkt').value.replace("T", " ") + "#" + Date.now();
             const aFloat = parseFloat(andreasShareInput.value);
             const dFloat = parseFloat(dagmarShareInput.value);
             localStorage.setItem(editId, JSON.stringify({ // nachdem die Zeit nur min-genau ist steht am Ende ein epochMs Suffix
@@ -208,7 +219,7 @@
                 const json = JSON.parse(entry[1]);
                 return json.s;
             }).reduce((a, b) => a + b, 0);
-            document.getElementById('schulden').textContent = sum > 0 ? "Andreas schuldet Dagmar " + sum + "€" : "Dagmar schuldet Andreas " + (-sum) + "€";
+            document.getElementById('schulden').textContent = sum > 0 ? "Andreas schuldet Dagmar " + sum.toFixed(3) + "€" : "Dagmar schuldet Andreas " + (-sum) + "€";
         }
         function setEditId(editId) {
             editIdDiv.textContent = editId;
