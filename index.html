@@ -102,7 +102,10 @@
     </div>
     <div id="historyTab" class="tabcontent" style="display: none">
         <div id="table-wrapper"></div>
-        <button type="button" onclick="download()">Save</button>
+        <button type="button" onclick="exportContent()">Export</button>
+        <button type="button" onclick="document.getElementById('fileInput').click()">Import</button>
+        <!-- Das unsichtbare Datei-Feld, das im Hintergrund die Arbeit macht -->
+        <input type="file" id="fileInput" accept=".txt,.csv" style="display: none;" />
     </div>
     <script>
         const andreasShareInput = document.getElementById('andreasShareAbs');
@@ -116,8 +119,9 @@
         document.getElementById("zeitpunkt").value = dateNow();
         updateSchulden();
         updatePersonAmounts();
+        const fileInput = document.getElementById('fileInput');
 
-        function download() {
+        function exportContent() {
             var anchor = document.createElement("a");
             anchor.download = "ausgaben_" + Date.now() + ".txt";
             const downloadContent = readLocalStorage().map(e => e[0] + "=" + e[1]).join("\n"); // relevanter localstorage content als key=value file
@@ -127,6 +131,23 @@
             anchor.click();
             document.body.removeChild(anchor);
         }
+        fileInput.addEventListener('change', function (event) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                let successCount = 0;
+                e.target.result.split(/\r?\n/).forEach(line => {
+                    if (!line.trim()) return; // Überspringt leere Zeilen
+                    const separatorIndex = line.indexOf('='); // Teilt die Zeile beim ERSTEN Gleichheitszeichen auf
+                    if (separatorIndex !== -1) { // Speichert den Eintrag im LocalStorage des Browsers
+                        localStorage.setItem(line.substring(0, separatorIndex), line.substring(separatorIndex + 1));
+                        successCount++;
+                    }
+                });
+                alert(`${successCount} Einträge erfolgreich im LocalStorage gespeichert!`);
+                fileInput.value = ''; // Setzt das Feld zurück, damit dieselbe Datei direkt nochmals gewählt werden kann
+            };
+            reader.readAsText(event.target.files[0]);
+        });
         function readLocalStorage() {
             return Object.entries(localStorage).sort().reverse().filter(e => e[0].startsWith("Ausgabe#"));
         }
@@ -140,7 +161,7 @@
                     const zeitpunkt = entry[0].split("#")[1];
                     const payer = json.s < 0 ? 'A' : 'D';
                     table += `<tr style="cursor: pointer" onClick="rowClick('${entry[0]}','${zeitpunkt}','${json.k}','${json.b}','${json.a}','${json.d}','${payer}')">
-                        <td>${zeitpunkt} ${json.k}<div style="font-size:small">${json.b}</div><div style="font-size:small">Von: ${payer + '(' + json.s + ')'} Belastet A:${json.a} D:${json.d}</div></td>
+                        <td>${zeitpunkt} ${json.k}<div style="font-size:small">${json.b}</div><div style="font-size:small">von ${payer} (A=${json.a} D=${json.d})</div></td>
                         <td style="text-align:right;padding-right:0.3rem;font-weight:bold;min-width:4rem">${add(json.a, json.d)}</td>
                         <td style="width:0"><button onClick="deleteClick('${entry[0]}', event)">X</button></td></tr>`
                 });
@@ -156,7 +177,7 @@
             return nowUpToMin.toISOString().slice(0, -1); // schneide Z am Ende weg
         }
         function add(a, d) {
-            return parseFloat(a) + parseFloat(d);
+            return (parseFloat(a) + parseFloat(d)).toFixed(2);
         }
 
         function rowClick(editId, zeitpunkt, k, b, a, d, p) {
@@ -219,7 +240,7 @@
                 const json = JSON.parse(entry[1]);
                 return json.s;
             }).reduce((a, b) => a + b, 0);
-            document.getElementById('schulden').textContent = sum > 0 ? "Andreas schuldet Dagmar " + sum.toFixed(3) + "€" : "Dagmar schuldet Andreas " + (-sum) + "€";
+            document.getElementById('schulden').textContent = sum > 0 ? "Andreas schuldet Dagmar " + sum.toFixed(2) + "€" : "Dagmar schuldet Andreas " + (-sum).toFixed(2) + "€";
         }
         function setEditId(editId) {
             editIdDiv.textContent = editId;
