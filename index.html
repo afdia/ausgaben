@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <title>Ausgaben</title>
@@ -91,11 +90,11 @@
                 <option value="Verschiedenes">Verschiedenes</option>
                 <option value="Geldtransfer">Geldtransfer</option>
             </select>
-            <label for="dagmarShareAbs">Beschreibung</label>
+            <label for="beschreibung">Beschreibung</label>
             <input id="beschreibung" name="beschreibung" placeholder="Grund der Zahlung">
             <label for="zeitpunkt">Zeitpunkt</label>
             <input type="datetime-local" id="zeitpunkt" name="zeitpunkt" placeholder="Zeitpunkt der Zahlung">
-            <button id="neu" onclick="neuClick()">Neu</button><button style="white-space:break-spaces" id="speichern" onclick="speichernClick()">Speichern <span style="font-size:small" id="editId"></span></button>
+            <button type="button" id="neu" onclick="neuClick()">Neu</button><button type="button" style="white-space:break-spaces" id="speichern" onclick="speichernClick()">Speichern <span style="font-size:small" id="editId"></span></button>
             <div></div>
         </form>
         <div id="infoText"></div>
@@ -105,21 +104,23 @@
         <button type="button" onclick="exportContent()">Export</button>
         <button type="button" onclick="document.getElementById('fileInput').click()">Import</button>
         <!-- Das unsichtbare Datei-Feld, das im Hintergrund die Arbeit macht -->
-        <input type="file" id="fileInput" accept=".txt,.csv" style="display: none;" />
+        <input type="file" id="fileInput" accept=".txt" style="display: none;" />
     </div>
     <script>
         const andreasShareInput = document.getElementById('andreasShareAbs');
-        andreasShareInput.addEventListener('input', () => updateOtherShare(andreasShareInput, dagmarShareInput));
         const dagmarShareInput = document.getElementById('dagmarShareAbs');
-        dagmarShareInput.addEventListener('input', () => updateOtherShare(dagmarShareInput, andreasShareInput));
         const totalAmountInput = document.getElementById('amount');
-        totalAmountInput.addEventListener('input', setDefaultSplit);
-        const tabcontent = document.getElementsByClassName("tabcontent");
+        const fileInput = document.getElementById('fileInput');
         const editIdDiv = document.getElementById('editId');
+
+        andreasShareInput.addEventListener('input', () => updateOtherShare(andreasShareInput, dagmarShareInput));
+        dagmarShareInput.addEventListener('input', () => updateOtherShare(dagmarShareInput, andreasShareInput));
+        totalAmountInput.addEventListener('input', setDefaultSplit);
+        fileInput.addEventListener('change', importContent);
+
         document.getElementById("zeitpunkt").value = dateNow();
         updateSchulden();
         updatePersonAmounts();
-        const fileInput = document.getElementById('fileInput');
 
         function exportContent() {
             var anchor = document.createElement("a");
@@ -131,7 +132,7 @@
             anchor.click();
             document.body.removeChild(anchor);
         }
-        fileInput.addEventListener('change', function (event) {
+        function importContent(event) {
             const reader = new FileReader();
             reader.onload = function (e) {
                 let successCount = 0;
@@ -147,9 +148,11 @@
                 fileInput.value = ''; // Setzt das Feld zurück, damit dieselbe Datei direkt nochmals gewählt werden kann
             };
             reader.readAsText(event.target.files[0]);
-        });
+        }
         function readLocalStorage() {
-            return Object.entries(localStorage).sort().reverse().filter(e => e[0].startsWith("Ausgabe#"));
+            return Object.entries(localStorage)
+                .filter(e => e[0].startsWith("Ausgabe#"))
+                .sort().reverse();
         }
         function openTab(tabName) {
             Array.from(document.getElementsByClassName("tabcontent")).forEach(t => t.style.display = "none");
@@ -172,8 +175,7 @@
         function dateNow() { // Setup DateTime with Now https://stackoverflow.com/questions/24468518/html5-input-datetime-local-default-value-of-today-and-current-time/60884408#60884408
             var now = new Date();
             var nowUpToMin = new Date(now - now.getTimezoneOffset() * 60000);
-            nowUpToMin.setSeconds(null);
-            nowUpToMin.setMilliseconds(null);
+            nowUpToMin.setSeconds(0, 0);
             return nowUpToMin.toISOString().slice(0, -1); // schneide Z am Ende weg
         }
         function add(a, d) {
@@ -203,7 +205,7 @@
         }
         // Automatically set default split to 50/50 when amount changes
         function setDefaultSplit() {
-            const amount = parseFloat(totalAmountInput.value);
+            const amount = parseFloat(totalAmountInput.value) || 0; // guard gegen NaN
             const half = amount / 2;
             andreasShareInput.value = half.toFixed(3);
             dagmarShareInput.value = half.toFixed(3);
@@ -219,8 +221,8 @@
         }
         function speichernClick() { // die Keys enthalten den Zeitpkt damit die Sortierung danach passiert
             const editId = editIdDiv.innerText !== "" ? editIdDiv.innerText : "Ausgabe#" + document.getElementById('zeitpunkt').value.replace("T", " ") + "#" + Date.now();
-            const aFloat = parseFloat(andreasShareInput.value);
-            const dFloat = parseFloat(dagmarShareInput.value);
+            const aFloat = parseFloat(andreasShareInput.value) || 0; //  || 0 ist NaN guard
+            const dFloat = parseFloat(dagmarShareInput.value) || 0;
             localStorage.setItem(editId, JSON.stringify({ // nachdem die Zeit nur min-genau ist steht am Ende ein epochMs Suffix
                 a: aFloat,
                 d: dFloat,
@@ -243,15 +245,15 @@
             document.getElementById('schulden').textContent = sum > 0 ? "Andreas schuldet Dagmar " + sum.toFixed(2) + "€" : "Dagmar schuldet Andreas " + (-sum).toFixed(2) + "€";
         }
         function setEditId(editId) {
-            editIdDiv.textContent = editId;
-            document.getElementById('zeitpunkt').readOnly = editId !== null;
+            editIdDiv.textContent = editId || ''; // wenn null dann wird leerstring gesetzt
+            document.getElementById('zeitpunkt').readOnly = (editId ? true : false);
         }
         function updatePersonAmounts() {
             totalAmountInput.setAttribute("placeholder", "Betrag bezahlt von " + (document.getElementById('andreasRadio').checked ? 'Andreas' : 'Dagmar'));
             const geldtransfer = document.getElementById('kategorie').value == "Geldtransfer";
-            const amount = parseFloat(totalAmountInput.value);
-            let andreasAmount = parseFloat(andreasShareInput.value);
-            let dagmarAmount = parseFloat(dagmarShareInput.value);
+            const amount = parseFloat(totalAmountInput.value) || 0;
+            let andreasAmount = parseFloat(andreasShareInput.value) || 0;
+            let dagmarAmount = parseFloat(dagmarShareInput.value) || 0;
 
             if (geldtransfer || isNaN(amount) || amount <= 0) { // Geldtransfer erlaubt keinen custom split sondern ist immer 100% bei der Gegenseite
                 andreasShareInput.disabled = true;
@@ -268,5 +270,4 @@
         }
     </script>
 </body>
-
 </html>
