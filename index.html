@@ -171,6 +171,9 @@
                 table += '</tbody></table>';
                 document.getElementById('table-wrapper').innerHTML = table;
             }
+            if (tabName == 'zahlungTab') {
+                updatePersonAmounts(); // nach Wechsel auf Zahlungstab muss neu ermittelt werden welche Spalten klickbar sind etc
+            }
         }
         function dateNow() { // Setup DateTime with Now https://stackoverflow.com/questions/24468518/html5-input-datetime-local-default-value-of-today-and-current-time/60884408#60884408
             var now = new Date();
