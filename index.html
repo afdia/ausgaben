@@ -10,6 +10,7 @@
         body {
             padding: 0.5rem;
         }
+
         :invalid {
             border-color: #ec5840;
         }
@@ -66,7 +67,7 @@
     </style>
 </head>
 
-<body>
+<body><!-- Button zur Aktivierung der API -->
     <div style="font-size:1.3rem;margin-bottom: 0.5rem" id="schulden"></div>
     <div class="toggle menu" style="display:flex">
         <label style="flex: 1 1 auto"><input type="radio" id="zahlungRadio" name="menuTabs" onclick="openTab('zahlungTab')" checked autocomplete="off"><span>Zahlung</span></label> <!-- autocomplete="off" damit FF sich checked state nicht merkt: https://stackoverflow.com/a/471140 -->
@@ -105,7 +106,7 @@
     </div>
     <div id="historyTab" class="tabcontent" style="display: none">
         <div id="table-wrapper"></div>
-        <button type="button" onclick="exportContent()">Export</button>
+        <button type="button" onclick="deleteLocalStorage()">Alles löschen</button>
         <button type="button" onclick="document.getElementById('fileInput').click()">Import</button>
         <!-- Das unsichtbare Datei-Feld, das im Hintergrund die Arbeit macht -->
         <input type="file" id="fileInput" accept=".txt" style="display: none;" />
@@ -120,23 +121,13 @@
         andreasShareInput.addEventListener('input', () => updateOtherShare(andreasShareInput, dagmarShareInput));
         dagmarShareInput.addEventListener('input', () => updateOtherShare(dagmarShareInput, andreasShareInput));
         totalAmountInput.addEventListener('input', setDefaultSplit);
-        fileInput.addEventListener('change', importContent);
+        fileInput.addEventListener('change', importFileToLocalStorage);
 
         document.getElementById("zeitpunkt").value = dateNow();
         updateSchulden();
         updatePersonAmounts();
 
-        function exportContent() {
-            var anchor = document.createElement("a");
-            anchor.download = "ausgaben_" + Date.now() + ".txt";
-            const downloadContent = readLocalStorage().map(e => e[0] + "=" + e[1]).join("\n"); // relevanter localstorage content als key=value file
-            anchor.href = window.URL.createObjectURL(new Blob([downloadContent], { type: "text/plain" }));
-            anchor.target = "_blank";
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-        }
-        function importContent(event) {
+        function importFileToLocalStorage(event) {
             const reader = new FileReader();
             reader.onload = function (e) {
                 let successCount = 0;
@@ -150,6 +141,8 @@
                 });
                 alert(`${successCount} Einträge erfolgreich im LocalStorage gespeichert!`);
                 fileInput.value = ''; // Setzt das Feld zurück, damit dieselbe Datei direkt nochmals gewählt werden kann
+                updateSchulden();
+                openTab('historyTab');
             };
             reader.readAsText(event.target.files[0]);
         }
@@ -238,6 +231,7 @@
             }
             event.stopPropagation(); // das line click event soll nicht triggern
             updateSchulden();
+            exportLocalStorage();
         }
         // Automatically set default split to 50/50 when amount changes
         function setDefaultSplit() {
@@ -272,6 +266,23 @@
             document.getElementById('infoText').offsetHeight; // trigger reflow https://stackoverflow.com/a/45036752
             document.getElementById('infoText').className = "fadeout";
             updateSchulden();
+            exportLocalStorage();
+        }
+        function exportLocalStorage() {
+            const downloadContent = readLocalStorage().map(e => e[0] + "=" + e[1]).join("\n"); // relevanter localstorage content als key=value file
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(new Blob([downloadContent], { type: "text/plain" }));
+            const now = new Date();
+            link.download = `ausgaben_export_${new Date().toLocaleString('sv-SE').replace(' ', '_').replace(/:/g, '-')}.bak.txt`; // erzeuge Filesystem kompatibles Datum. sv-SE weil dort YYYY-MM-DD und nicht DD.MM.YYYY das Format ist
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }
+        function deleteLocalStorage() {
+            readLocalStorage().forEach(entry => localStorage.removeItem(entry[0]));
+            updateSchulden();
+            openTab('historyTab');
         }
         function updateSchulden() {
             const sum = readLocalStorage().map(entry => {
