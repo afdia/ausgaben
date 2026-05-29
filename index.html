@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Ausgaben</title>
@@ -158,18 +159,36 @@
             Array.from(document.getElementsByClassName("tabcontent")).forEach(t => t.style.display = "none");
             document.getElementById(tabName).style.display = "block";
             if (tabName === "historyTab") {
-                let table = '<table><tbody>';
+                const groups = {}; // 1. Daten nach Jahr und Monat gruppieren
                 readLocalStorage().forEach(entry => {
-                    const json = JSON.parse(entry[1]); // der Zeitpkt ist der mittlere Teil des LocalStorage Keys (eingegrenzt durch _) zb Ausgabe#2025-10-31 10:44_1761903861769
-                    const zeitpunkt = entry[0].split("#")[1];
-                    const payer = json.s < 0 ? 'A' : 'D';
-                    table += `<tr style="cursor: pointer" onClick="rowClick('${entry[0]}','${zeitpunkt}','${json.k}','${json.b}','${json.a}','${json.d}','${payer}')">
-                        <td>${zeitpunkt} ${json.k}<div style="font-size:small">${json.b}</div><div style="font-size:small">von ${payer} (A=${json.a} D=${json.d})</div></td>
-                        <td style="text-align:right;padding-right:0.3rem;font-weight:bold;min-width:4rem">${add(json.a, json.d)}</td>
-                        <td style="width:0"><button onClick="deleteClick('${entry[0]}', event)">X</button></td></tr>`
+                    const json = JSON.parse(entry[1]);
+                    const zeitpunkt = entry[0].split("#")[1]; // z.B. "2026-05-23 20:52"
+                    const yearMonth = zeitpunkt.substring(0, 7); // Extrahiert "YYYY-MM"
+                    if (!groups[yearMonth]) {
+                        groups[yearMonth] = [];
+                    }
+                    groups[yearMonth].push({ entry, json, zeitpunkt });
                 });
-                table += '</tbody></table>';
-                document.getElementById('table-wrapper').innerHTML = table;
+                let htmlStructure = ''; // 2. HTML mit einklappbaren Bereichen generieren
+                Object.keys(groups).sort().reverse().forEach((monthKey, index) => {
+                    const isOpen = index < 2 ? 'open' : ''; // die obersten 2 Einträge sollen ausgeklappt sein
+                    htmlStructure += `
+                    <details ${isOpen} style="margin-bottom: 1rem;">
+                        <summary>${monthKey} (${groups[monthKey].length})</summary>
+                        <table><tbody>`;
+                    groups[monthKey].forEach(({ entry, json, zeitpunkt }) => {
+                        const payer = json.s < 0 ? 'A' : 'D';
+                        htmlStructure += `
+                        <tr style="cursor: pointer" onClick="rowClick('${entry[0]}','${zeitpunkt}','${json.k}','${json.b}','${json.a}','${json.d}','${payer}')">
+                            <td>${zeitpunkt} ${json.k}<div style="font-size:small">${json.b}</div><div style="font-size:small">von ${payer} (A=${json.a} D=${json.d})</div></td>
+                            <td style="text-align:right;padding-right:0.3rem;font-weight:bold;min-width:4rem">${add(json.a, json.d)}</td>
+                            <td style="width:0"><button onClick="deleteClick('${entry[0]}', event)">X</button></td>
+                        </tr>`;
+                    });
+
+                    htmlStructure += `</tbody></table></details>`;
+                });
+                document.getElementById('table-wrapper').innerHTML = htmlStructure;
             }
             if (tabName == 'zahlungTab') {
                 updatePersonAmounts(); // nach Wechsel auf Zahlungstab muss neu ermittelt werden welche Spalten klickbar sind etc
@@ -273,4 +292,5 @@
         }
     </script>
 </body>
+
 </html>
