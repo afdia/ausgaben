@@ -7,6 +7,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@exampledev/new.css@1.1.3/new.min.css">
     <style>
+        body {
+            padding: 0.5rem;
+        }
         :invalid {
             border-color: #ec5840;
         }
@@ -88,7 +91,7 @@
                 <option value="Amazon">Amazon</option>
                 <option value="Kultur">Kultur</option>
                 <option value="Unterkunft">Unterkunft</option>
-                <option value="Verschiedenes">Verschiedenes</option>
+                <option value="Sonstiges">Sonstiges</option>
                 <option value="Geldtransfer">Geldtransfer</option>
             </select>
             <label for="beschreibung">Beschreibung</label>
@@ -169,26 +172,37 @@
                     }
                     groups[yearMonth].push({ entry, json, zeitpunkt });
                 });
-                let htmlStructure = ''; // 2. HTML mit einklappbaren Bereichen generieren
+                let currentEntries = '';  // Die letzten 2 Monate werden direkt angezeigt
+                let olderEntries = ''; // Ältere Einträge werden bei Bedarf ausgeklappt
+                let olderCount = 0;  // Zähler für ältere Einträge
                 Object.keys(groups).sort().reverse().forEach((monthKey, index) => {
-                    const isOpen = index < 2 ? 'open' : ''; // die obersten 2 Einträge sollen ausgeklappt sein
-                    htmlStructure += `
-                    <details ${isOpen} style="margin-bottom: 1rem;">
-                        <summary>${monthKey} (${groups[monthKey].length})</summary>
-                        <table><tbody>`;
+                    let monthHtml = `<table><tbody>`;
                     groups[monthKey].forEach(({ entry, json, zeitpunkt }) => {
                         const payer = json.s < 0 ? 'A' : 'D';
-                        htmlStructure += `
+                        const parts = payer == 'A' ? `<span style="color:var(--nc-lk-1)">A</span>:${json.a} D:${json.d}` : `A:${json.a} <span style="color:var(--nc-lk-1)">D</span>:${json.d}`
+                        monthHtml += `
                         <tr style="cursor: pointer" onClick="rowClick('${entry[0]}','${zeitpunkt}','${json.k}','${json.b}','${json.a}','${json.d}','${payer}')">
-                            <td>${zeitpunkt} ${json.k}<div style="font-size:small">${json.b}</div><div style="font-size:small">von ${payer} (A=${json.a} D=${json.d})</div></td>
-                            <td style="text-align:right;padding-right:0.3rem;font-weight:bold;min-width:4rem">${add(json.a, json.d)}</td>
-                            <td style="width:0"><button onClick="deleteClick('${entry[0]}', event)">X</button></td>
+                            <td>${zeitpunkt} <span style="font-size:small">${json.k} ${parts}</span><div style="font-size:small">${json.b}</div></td>
+                            <td style="text-align:right;font-weight:bold;min-width:4rem;padding: 0.6rem 0.3rem 0.6rem 0;">${add(json.a, json.d)}</td>
+                            <td style="width:0"><button style="margin-top:0.2rem" onClick="deleteClick('${entry[0]}', event)">X</button></td>
                         </tr>`;
                     });
+                    monthHtml += `</tbody></table>`;
 
-                    htmlStructure += `</tbody></table></details>`;
+                    if (index < 2) { // separiere die ersten 2 Monate (immer sichtbar) vom Rest (eingeklappt)
+                        currentEntries += monthHtml;
+                    } else {
+                        olderEntries += monthHtml;
+                        olderCount += groups[monthKey].length;
+                    }
                 });
-                document.getElementById('table-wrapper').innerHTML = htmlStructure;
+                if (olderCount > 0) { // Den "Ältere Einträge" falls vorhanden nach den currentEntries einfügen
+                    currentEntries += `<details style="padding:0px; margin-top: 1.5rem; margin-bottom: 1rem;">
+                                        <summary style="cursor: pointer; font-weight: bold;">Ältere Einträge (${olderCount})</summary>
+                                        ${olderEntries}
+                                      </details>`;
+                }
+                document.getElementById('table-wrapper').innerHTML = currentEntries;
             }
             if (tabName == 'zahlungTab') {
                 updatePersonAmounts(); // nach Wechsel auf Zahlungstab muss neu ermittelt werden welche Spalten klickbar sind etc
