@@ -2,6 +2,9 @@
 <html lang="en">
 
 <head>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#7928CA" />
+    <link rel="apple-touch-icon" href="icons-512.png">
     <meta charset="UTF-8">
     <title>Ausgaben</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -337,6 +340,14 @@
                 }
             }
         });
+        // Serviceworker für PWA registrieren
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./serviceworker.js')
+                    .then((reg) => console.log('Service Worker erfolgreich registriert!', reg.scope))
+                    .catch((err) => console.error('Service Worker Registrierung fehlgeschlagen:', err));
+            });
+        }
     </script>
 </body>
 

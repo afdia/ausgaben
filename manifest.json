@@ -1,0 +1,30 @@
+{
+    "id": "/ausgaben-pwa",
+    "short_name": "Ausgaben",
+    "name": "Ausgaben",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#7928CA",
+    "theme_color": "#7928CA",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "./icons-192.png",
+            "type": "image/png",
+            "sizes": "192x192",
+            "purpose": "any"
+        },
+        {
+            "src": "./icons-512.png",
+            "type": "image/png",
+            "sizes": "512x512",
+            "purpose": "any"
+        },
+        {
+            "src": "./icons-512.png",
+            "type": "image/png",
+            "sizes": "512x512",
+            "purpose": "maskable"
+        }
+    ]
+}
