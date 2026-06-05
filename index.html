@@ -250,7 +250,7 @@
             updatePersonAmounts();
         }
         function neuClick() {
-            rowClick(null, dateNow(), '', '', '', '', null);
+            rowClick(null, dateNow(), 'Essen', '', '', '', null);
         }
         function speichernClick() { // die Keys enthalten den Zeitpkt damit die Sortierung danach passiert
             const editId = editIdDiv.innerText !== "" ? editIdDiv.innerText : "Ausgabe#" + document.getElementById('zeitpunkt').value.replace("T", " ") + "#" + Date.now();
