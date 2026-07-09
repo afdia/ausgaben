@@ -78,12 +78,12 @@
     </div>
     <div id="zahlungTab" class="tabcontent">
         <div id="payerToggle" class="toggle payer" style="display:flex">
-            <label style="flex: 1 1 auto"><input type="radio" id="andreasRadio" name="payer" onclick="document.getElementById('amount').focus();updatePersonAmounts()" autocomplete="off" checked><span>Andreas</span></label>
-            <label style="flex: 1 1 auto"><input type="radio" id="dagmarRadio" name="payer" onclick="document.getElementById('amount').focus();updatePersonAmounts()" autocomplete="off"><span>Dagmar</span></label>
+            <label style="flex: 1 1 auto"><input type="radio" id="andreasRadio" name="payer" onclick="totalAmountInput.disabled = false;updatePersonAmounts();document.getElementById('amount').focus()" autocomplete="off"><span>Andreas</span></label>
+            <label style="flex: 1 1 auto"><input type="radio" id="dagmarRadio" name="payer" onclick="totalAmountInput.disabled = false;updatePersonAmounts();document.getElementById('amount').focus()" autocomplete="off"><span>Dagmar</span></label>
         </div>
         <form id="splitForm" autocomplete="off" onsubmit="return false;" style="display: grid;grid-template-columns: 12ch auto; align-items: baseline; column-gap: 0.5em">
             <label for="amount">Betrag</label>
-            <input type="number" id="amount" name="amount" min="0" step="0.01" onfocus="this.select()" required>
+            <input disabled type="number" id="amount" name="amount" min="0" step="0.01" onfocus="this.select()" required>
             <label for="andreasShareAbs">Andreas</label>
             <input type="number" id="andreasShareAbs" name="andreasShareAbs" min="0" step="0.001" placeholder="Andreas Anteil" onfocus="this.select()">
             <label for="dagmarShareAbs">Dagmar</label>
@@ -250,6 +250,9 @@
             updatePersonAmounts();
         }
         function neuClick() {
+            totalAmountInput.disabled = true; // legt man einen neuen Eintrag an kann man keinen Betrag angeben bis ma ndie Person gewählt hat
+            document.getElementById('andreasRadio').checked = false; // Anfangs ist keine Person gewählt
+            document.getElementById('dagmarRadio').checked = false;
             rowClick(null, dateNow(), 'Essen', '', '', '', null);
         }
         function speichernClick() { // die Keys enthalten den Zeitpkt damit die Sortierung danach passiert
@@ -263,13 +266,13 @@
                 k: document.getElementById('kategorie').value,
                 s: document.getElementById('andreasRadio').checked ? -dFloat : +aFloat, // wenn A wird der D Betrag mit - eingetragen (- sind Schulden von D bei A). wenn D wird der A Betrag mit + eingetragen (+ sind Schulden von A bei D)
             }));
-            setEditId(editId);
             document.getElementById('infoText').textContent = "Ausgabe wurde gespeichert und kann bis auf den Zeitpunkt editiert werden";
             document.getElementById('infoText').className = "";
             document.getElementById('infoText').offsetHeight; // trigger reflow https://stackoverflow.com/a/45036752
             document.getElementById('infoText').className = "fadeout";
             updateSchulden();
             exportLocalStorage();
+            neuClick();
         }
         function exportLocalStorage() {
             const downloadContent = readLocalStorage().map(e => e[0] + "=" + e[1]).join("\n"); // relevanter localstorage content als key=value file
@@ -299,7 +302,7 @@
             document.getElementById('zeitpunkt').readOnly = (editId ? true : false);
         }
         function updatePersonAmounts() {
-            totalAmountInput.setAttribute("placeholder", "Betrag bezahlt von " + (document.getElementById('andreasRadio').checked ? 'Andreas' : 'Dagmar'));
+            totalAmountInput.setAttribute("placeholder", "Betrag bezahlt von " + (document.getElementById('andreasRadio').checked ? 'Andreas' : document.getElementById('dagmarRadio').checked ? 'Dagmar' : '?'));
             const geldtransfer = document.getElementById('kategorie').value == "Geldtransfer";
             const amount = parseFloat(totalAmountInput.value) || 0;
             let andreasAmount = parseFloat(andreasShareInput.value) || 0;
