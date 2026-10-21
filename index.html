@@ -78,8 +78,8 @@
     </div>
     <div id="zahlungTab" class="tabcontent">
         <div id="payerToggle" class="toggle payer" style="display:flex">
-            <label style="flex: 1 1 auto"><input type="radio" id="andreasRadio" name="payer" onclick="totalAmountInput.disabled = false;updatePersonAmounts();document.getElementById('amount').focus()" autocomplete="off"><span>Andreas</span></label>
-            <label style="flex: 1 1 auto"><input type="radio" id="dagmarRadio" name="payer" onclick="totalAmountInput.disabled = false;updatePersonAmounts();document.getElementById('amount').focus()" autocomplete="off"><span>Dagmar</span></label>
+            <label style="flex: 1 1 auto"><input type="radio" id="andreasRadio" name="payer" onclick="payerChanged()" autocomplete="off"><span>Andreas</span></label>
+            <label style="flex: 1 1 auto"><input type="radio" id="dagmarRadio" name="payer" onclick="payerChanged()" autocomplete="off"><span>Dagmar</span></label>
         </div>
         <form id="splitForm" autocomplete="off" onsubmit="return false;" style="display: grid;grid-template-columns: 12ch auto; align-items: baseline; column-gap: 0.5em">
             <label for="amount">Betrag</label>
@@ -126,10 +126,15 @@
         totalAmountInput.addEventListener('input', setDefaultSplit);
         fileInput.addEventListener('change', importFileToLocalStorage);
 
-        document.getElementById("zeitpunkt").value = dateNow();
         updateSchulden();
         updatePersonAmounts();
 
+        function payerChanged() {
+            totalAmountInput.disabled = false;
+            updatePersonAmounts();
+            document.getElementById('amount').focus();
+            document.getElementById("zeitpunkt").value = dateNow(); // wenn payer selektiert aktualisiere Datum
+        }
         function importFileToLocalStorage(event) {
             const reader = new FileReader();
             reader.onload = function (e) {
