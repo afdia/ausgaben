@@ -272,7 +272,7 @@
             document.getElementById('infoText').className = "fadeout";
             updateSchulden();
             exportLocalStorage();
-            neuClick();
+            document.getElementById('historyRadio').click();
         }
         function exportLocalStorage() {
             const downloadContent = readLocalStorage().map(e => e[0] + "=" + e[1]).join("\n"); // relevanter localstorage content als key=value file
