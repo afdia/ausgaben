@@ -101,7 +101,7 @@
             <label for="beschreibung">Beschreibung</label>
             <input id="beschreibung" name="beschreibung" placeholder="Grund der Zahlung">
             <label for="zeitpunkt">Zeitpunkt</label>
-            <input type="datetime-local" id="zeitpunkt" name="zeitpunkt" placeholder="Zeitpunkt der Zahlung">
+            <input type="datetime-local" id="zeitpunkt" name="zeitpunkt" placeholder="Zeitpunkt der Zahlung" onclick="this.showPicker()">
             <button type="button" id="neu" onclick="neuClick()">Neu</button><button type="button" style="white-space:break-spaces" id="speichern" onclick="speichernClick()">Speichern <span style="font-size:small" id="editId"></span></button>
             <div></div>
         </form>
