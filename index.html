@@ -88,7 +88,7 @@
             <label style="flex: 1 1 auto"><input type="radio" id="andreasRadio" name="payer" onclick="payerChanged()" autocomplete="off"><span>Andreas</span></label>
             <label style="flex: 1 1 auto"><input type="radio" id="dagmarRadio" name="payer" onclick="payerChanged()" autocomplete="off"><span>Dagmar</span></label>
         </div>
-        <form id="splitForm" autocomplete="off" onsubmit="return false;" style="display: grid;grid-template-columns: 12ch auto; align-items: baseline; column-gap: 0.5em">
+        <form id="splitForm" autocomplete="off" style="display: grid;grid-template-columns: 12ch auto; align-items: baseline; column-gap: 0.5em">
             <label for="amount">Betrag</label>
             <input disabled type="number" id="amount" name="amount" min="0" step="0.01" onfocus="this.select()" required>
             <label for="andreasShareAbs">Andreas</label>
