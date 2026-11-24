@@ -162,7 +162,9 @@
             totalAmountInput.disabled = false;
             updatePersonAmounts();
             document.getElementById('amount').focus();
-            document.getElementById("zeitpunkt").value = dateNow(); // wenn payer selektiert aktualisiere Datum
+            if (editIdDiv.textContent === '') { // bei neuem Eintrag wird bei Zahler-Change der Zeitpunkt gesetzt. Beim Bearbeiten bleibt der Zeitpkt (ist immutable)
+                document.getElementById("zeitpunkt").value = dateNow();
+            }
         }
         function importFileToLocalStorage(event) {
             const reader = new FileReader();
@@ -264,14 +266,12 @@
             openTab('zahlungTab');
         }
         function deleteClick(rowLocalStorageKey, event) {
-            if (window.confirm("Wirklich löschen?")) {
-                const thisTr = event.target.parentElement.parentElement;
-                thisTr.parentElement.removeChild(thisTr);
-                localStorage.removeItem(rowLocalStorageKey);
-            }
             event.stopPropagation(); // das line click event soll nicht triggern
+            if (!window.confirm("Wirklich löschen?")) return; // bei Abbruch nichts tun
+            localStorage.removeItem(rowLocalStorageKey);
             updateSchulden();
             exportLocalStorage();
+            openTab('historyTab'); // neu rendern, sonst bleibt eine leere Monatstabelle stehen
         }
         // Automatically set default split to 50/50 when amount changes
         function setDefaultSplit() {
@@ -316,6 +316,7 @@
             document.getElementById('infoText').className = "fadeout";
             updateSchulden();
             exportLocalStorage();
+            neuClick(); // Formular zurücksetzen, sonst legt ein zweites Speichern ein Duplikat an
             document.getElementById('historyRadio').click();
         }
         function exportLocalStorage() {
