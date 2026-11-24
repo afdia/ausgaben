@@ -1,14 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ausgaben</title>
+    <meta name="description" content="Ausgabenverwaltung für Andreas und Dagmar: Zahlungen erfassen, Saldo berechnen, Daten lokal sichern.">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#7928CA" />
+    <link rel="icon" href="icons-192.png" sizes="192x192">
     <link rel="apple-touch-icon" href="icons-512.png">
-    <meta charset="UTF-8">
-    <title>Ausgaben</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@exampledev/new.css@1.1.3/new.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@exampledev/new.css@1.1.3/new.min.css"
+          integrity="sha384-6bz2CNKwFBJ3+H4j8A2N7Qt+LpAwjZa0/l6dSkFepfCWuCqn8LkZr7mpN4VvZPm9" crossorigin="anonymous">
     <style>
         body {
             padding: 0.5rem;
@@ -71,6 +74,9 @@
 </head>
 
 <body><!-- Button zur Aktivierung der API -->
+    <noscript>
+        <p>Diese App benötigt JavaScript. Bitte aktiviere JavaScript in deinem Browser.</p>
+    </noscript>
     <div style="font-size:1.3rem;margin-bottom: 0.5rem" id="schulden"></div>
     <div class="toggle menu" style="display:flex">
         <label style="flex: 1 1 auto"><input type="radio" id="zahlungRadio" name="menuTabs" onclick="openTab('zahlungTab')" checked autocomplete="off"><span>Zahlung</span></label> <!-- autocomplete="off" damit FF sich checked state nicht merkt: https://stackoverflow.com/a/471140 -->
@@ -121,6 +127,29 @@
         const fileInput = document.getElementById('fileInput');
         const editIdDiv = document.getElementById('editId');
 
+        // HTML-Escaping: verhindert, dass importierte Inhalte als HTML/JS interpretiert werden (XSS)
+        const HTML_ESCAPES = {
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        };
+        function esc(value) {
+            return String(value ?? '').replace(/[&<>"']/g, c => HTML_ESCAPES[c]);
+        }
+
+        // Wert als JS-String-Literal aufbereiten und fürs HTML-Attribut escapen.
+        // esc() allein reicht in on*-Attributen nicht, weil der Browser Entities vor dem JS-Parsen wieder dekodiert (");alert(1)// wuerde sonst ausbrechen
+        function jsAttr(value) {
+            return esc(JSON.stringify(value ?? ''));
+        }
+
+        function parseEntry(raw) {
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                console.warn('Ungültiger LocalStorage-Eintrag übersprungen:', e);
+                return null;
+            }
+        }
+
         andreasShareInput.addEventListener('input', () => updateOtherShare(andreasShareInput, dagmarShareInput));
         dagmarShareInput.addEventListener('input', () => updateOtherShare(dagmarShareInput, andreasShareInput));
         totalAmountInput.addEventListener('input', setDefaultSplit);
@@ -165,7 +194,8 @@
             if (tabName === "historyTab") {
                 const groups = {}; // 1. Daten nach Jahr und Monat gruppieren
                 readLocalStorage().forEach(entry => {
-                    const json = JSON.parse(entry[1]);
+                    const json = parseEntry(entry[1]);
+                    if (!json) return; // defekte Einträge überspringen
                     const zeitpunkt = entry[0].split("#")[1]; // z.B. "2026-05-23 20:52"
                     const yearMonth = zeitpunkt.substring(0, 7); // Extrahiert "YYYY-MM"
                     if (!groups[yearMonth]) {
@@ -180,12 +210,14 @@
                     let monthHtml = `<table><tbody>`;
                     groups[monthKey].forEach(({ entry, json, zeitpunkt }) => {
                         const payer = json.s < 0 ? 'A' : 'D';
-                        const parts = payer == 'A' ? `<span style="color:var(--nc-lk-1)">A</span>:${json.a} D:${json.d}` : `A:${json.a} <span style="color:var(--nc-lk-1)">D</span>:${json.d}`
+                        const a = esc(json.a);
+                        const d = esc(json.d);
+                        const parts = payer == 'A' ? `<span style="color:var(--nc-lk-1)">A</span>:${a} D:${d}` : `A:${a} <span style="color:var(--nc-lk-1)">D</span>:${d}`
                         monthHtml += `
-                        <tr style="cursor: pointer" onClick="rowClick('${entry[0]}','${zeitpunkt}','${json.k}','${json.b}','${json.a}','${json.d}','${payer}')">
-                            <td>${zeitpunkt} <span style="font-size:small">${json.k} ${parts}</span><div style="font-size:small">${json.b}</div></td>
-                            <td style="text-align:right;font-weight:bold;min-width:4rem;padding: 0.6rem 0.3rem 0.6rem 0;">${add(json.a, json.d)}</td>
-                            <td style="width:0"><button style="margin-top:0.2rem" onClick="deleteClick('${entry[0]}', event)">X</button></td>
+                        <tr style="cursor: pointer" onClick="rowClick(${jsAttr(entry[0])},${jsAttr(zeitpunkt)},${jsAttr(json.k)},${jsAttr(json.b)},${jsAttr(json.a)},${jsAttr(json.d)},${jsAttr(payer)})">
+                            <td>${esc(zeitpunkt)} <span style="font-size:small">${esc(json.k)} ${parts}</span><div style="font-size:small">${esc(json.b)}</div></td>
+                            <td style="text-align:right;font-weight:bold;min-width:4rem;padding: 0.6rem 0.3rem 0.6rem 0;">${esc(add(json.a, json.d))}</td>
+                            <td style="width:0"><button style="margin-top:0.2rem" onClick="deleteClick(${jsAttr(entry[0])}, event)">X</button></td>
                         </tr>`;
                     });
                     monthHtml += `</tbody></table>`;
@@ -261,6 +293,13 @@
             rowClick(null, dateNow(), 'Essen', '', '', '', null);
         }
         function speichernClick() { // die Keys enthalten den Zeitpkt damit die Sortierung danach passiert
+            // Der CSS-Hack (pointer-events) blockiert nur Mausklicks, daher hier auch für Tastatur prüfen
+            const form = document.getElementById('splitForm');
+            if (!form.checkValidity() || !document.querySelector('input[name="payer"]:checked')) {
+                document.getElementById('infoText').textContent = "Bitte zuerst eine Person und einen gültigen Betrag wählen";
+                document.getElementById('infoText').className = "";
+                return;
+            }
             const editId = editIdDiv.innerText !== "" ? editIdDiv.innerText : "Ausgabe#" + document.getElementById('zeitpunkt').value.replace("T", " ") + "#" + Date.now();
             const aFloat = parseFloat(andreasShareInput.value) || 0; //  || 0 ist NaN guard
             const dFloat = parseFloat(dagmarShareInput.value) || 0;
@@ -297,10 +336,10 @@
         }
         function updateSchulden() {
             const sum = readLocalStorage().map(entry => {
-                const json = JSON.parse(entry[1]);
-                return json.s;
+                const json = parseEntry(entry[1]);
+                return Number(json?.s) || 0;
             }).reduce((a, b) => a + b, 0);
-            document.getElementById('schulden').textContent = sum > 0 ? "Andreas schuldet Dagmar " + sum.toFixed(2) + "€" : "Dagmar schuldet Andreas " + (-sum).toFixed(2) + "€";
+            document.getElementById('schulden').textContent = sum > 0 ? "Andreas schuldet Dagmar " + sum.toFixed(2) + "€" : sum < 0 ? "Dagmar schuldet Andreas " + (-sum).toFixed(2) + "€" : "Ausgeglichen";
         }
         function setEditId(editId) {
             editIdDiv.textContent = editId || ''; // wenn null dann wird leerstring gesetzt
@@ -316,9 +355,9 @@
             if (geldtransfer || isNaN(amount) || amount <= 0) { // Geldtransfer erlaubt keinen custom split sondern ist immer 100% bei der Gegenseite
                 andreasShareInput.disabled = true;
                 dagmarShareInput.disabled = true;
-                if (geldtransfer) {
-                    const amount = parseFloat(totalAmountInput.value);
-                    andreasShareInput.value = document.querySelector('input[name = payer]:checked').id == "andreasRadio" ? "0" : amount;
+                const payerInput = document.querySelector('input[name="payer"]:checked');
+                if (geldtransfer && payerInput) {
+                    andreasShareInput.value = payerInput.id == "andreasRadio" ? "0" : amount;
                     dagmarShareInput.value = andreasShareInput.value == "0" ? amount : "0";
                 }
                 return;
@@ -327,27 +366,29 @@
             dagmarShareInput.disabled = false;
         }
         // Support for swiping left/right
-        var start = null;
+        let start = null;
         window.addEventListener("touchstart", function (event) {
             if (event.touches.length === 1) { //just one finger touched
-                start = event.touches.item(0).clientX;
+                start = { x: event.touches[0].clientX, y: event.touches[0].clientY }; // x+y merken, sonst zählt auch diagonales Scrollen als Swipe
             } else { //a second finger hit the screen, abort the touch
                 start = null;
             }
-        });
+        }, { passive: true }); // passiv heißt wir garantieren Browser kein preventDefault() aufzurufen, damit scrollt Browser sofort statt verzögert
         window.addEventListener("touchend", function (event) {
-            var offset = 50; //at least 50px are a swipe
+            const offset = 50; //at least 50px are a swipe
             if (start) { //the only finger that hit the screen left it
-                var end = event.changedTouches.item(0).clientX;
-                if (end > start + offset) { //a left -> right swipe
-                    openTab('historyTab');
-                    document.getElementById('zahlungRadio').click();
-                }
-                if (end < start - offset) { //a right -> left swipe
-                    document.getElementById('historyRadio').click();
+                const dx = event.changedTouches[0].clientX - start.x;
+                const dy = event.changedTouches[0].clientY - start.y;
+                if (Math.abs(dx) > offset && Math.abs(dx) > Math.abs(dy)) { // >=50px horizontal UND stärker horizontal als vertikal, sonst springt der Tab beim Scrollen
+                    if (dx > 0) { //a left -> right swipe
+                        openTab('historyTab');
+                        document.getElementById('zahlungRadio').click();
+                    } else { //a right -> left swipe
+                        document.getElementById('historyRadio').click();
+                    }
                 }
             }
-        });
+        }, { passive: true });
         // Serviceworker für PWA registrieren
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
