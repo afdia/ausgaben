@@ -68,7 +68,7 @@
 
         .fadeout {
             opacity: 0;
-            transition: visibility 0s 2s, opacity 2s linear;
+            transition: opacity 2s linear 1s; /* 1s sichtbar, dann in 2s ausblenden */
         }
     </style>
 </head>
@@ -78,7 +78,7 @@
         <p>Diese App benötigt JavaScript. Bitte aktiviere JavaScript in deinem Browser.</p>
     </noscript>
     <div style="font-size:1.3rem" id="schulden"></div>
-    <div id="infoText"></div>
+    <div style="font-size:0.6rem" id="infoText"></div>
     <div class="toggle menu" style="display:flex">
         <label style="flex: 1 1 auto"><input type="radio" id="zahlungRadio" name="menuTabs" onclick="openTab('zahlungTab')" checked autocomplete="off"><span>Zahlung</span></label> <!-- autocomplete="off" damit FF sich checked state nicht merkt: https://stackoverflow.com/a/471140 -->
         <label style="flex: 1 1 auto"><input type="radio" id="historyRadio" name="menuTabs" onclick="openTab('historyTab')" autocomplete="off"><span>History</span></label>
