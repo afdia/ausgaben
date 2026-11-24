@@ -322,7 +322,6 @@
             const downloadContent = readLocalStorage().map(e => e[0] + "=" + e[1]).join("\n"); // relevanter localstorage content als key=value file
             const link = document.createElement("a");
             link.href = URL.createObjectURL(new Blob([downloadContent], { type: "text/plain" }));
-            const now = new Date();
             link.download = `ausgaben_export_${new Date().toLocaleString('sv-SE').replace(' ', '_').replace(/:/g, '-')}.bak.txt`; // erzeuge Filesystem kompatibles Datum. sv-SE weil dort YYYY-MM-DD und nicht DD.MM.YYYY das Format ist
             document.body.appendChild(link);
             link.click();
@@ -349,8 +348,6 @@
             totalAmountInput.setAttribute("placeholder", "Betrag bezahlt von " + (document.getElementById('andreasRadio').checked ? 'Andreas' : document.getElementById('dagmarRadio').checked ? 'Dagmar' : '?'));
             const geldtransfer = document.getElementById('kategorie').value == "Geldtransfer";
             const amount = parseFloat(totalAmountInput.value) || 0;
-            let andreasAmount = parseFloat(andreasShareInput.value) || 0;
-            let dagmarAmount = parseFloat(dagmarShareInput.value) || 0;
 
             if (geldtransfer || isNaN(amount) || amount <= 0) { // Geldtransfer erlaubt keinen custom split sondern ist immer 100% bei der Gegenseite
                 andreasShareInput.disabled = true;
@@ -381,7 +378,6 @@
                 const dy = event.changedTouches[0].clientY - start.y;
                 if (Math.abs(dx) > offset && Math.abs(dx) > Math.abs(dy)) { // >=50px horizontal UND stärker horizontal als vertikal, sonst springt der Tab beim Scrollen
                     if (dx > 0) { //a left -> right swipe
-                        openTab('historyTab');
                         document.getElementById('zahlungRadio').click();
                     } else { //a right -> left swipe
                         document.getElementById('historyRadio').click();
