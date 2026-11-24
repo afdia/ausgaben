@@ -77,7 +77,8 @@
     <noscript>
         <p>Diese App benötigt JavaScript. Bitte aktiviere JavaScript in deinem Browser.</p>
     </noscript>
-    <div style="font-size:1.3rem;margin-bottom: 0.5rem" id="schulden"></div>
+    <div style="font-size:1.3rem" id="schulden"></div>
+    <div id="infoText"></div>
     <div class="toggle menu" style="display:flex">
         <label style="flex: 1 1 auto"><input type="radio" id="zahlungRadio" name="menuTabs" onclick="openTab('zahlungTab')" checked autocomplete="off"><span>Zahlung</span></label> <!-- autocomplete="off" damit FF sich checked state nicht merkt: https://stackoverflow.com/a/471140 -->
         <label style="flex: 1 1 auto"><input type="radio" id="historyRadio" name="menuTabs" onclick="openTab('historyTab')" autocomplete="off"><span>History</span></label>
@@ -111,7 +112,6 @@
             <button type="button" id="neu" onclick="neuClick()">Neu</button><button type="button" style="white-space:break-spaces" id="speichern" onclick="speichernClick()">Speichern <span style="font-size:small" id="editId"></span></button>
             <div></div>
         </form>
-        <div id="infoText"></div>
     </div>
     <div id="historyTab" class="tabcontent" style="display: none">
         <div id="table-wrapper"></div>
@@ -145,7 +145,6 @@
             try {
                 return JSON.parse(raw);
             } catch (e) {
-                console.warn('Ungültiger LocalStorage-Eintrag übersprungen:', e);
                 return null;
             }
         }
@@ -170,15 +169,19 @@
             const reader = new FileReader();
             reader.onload = function (e) {
                 let successCount = 0;
+                let skippedCount = 0;
                 e.target.result.split(/\r?\n/).forEach(line => {
                     if (!line.trim()) return; // Überspringt leere Zeilen
                     const separatorIndex = line.indexOf('='); // Teilt die Zeile beim ERSTEN Gleichheitszeichen auf
-                    if (separatorIndex !== -1) { // Speichert den Eintrag im LocalStorage des Browsers
-                        localStorage.setItem(line.substring(0, separatorIndex), line.substring(separatorIndex + 1));
-                        successCount++;
-                    }
+                    if (separatorIndex === -1) { skippedCount++; return; }
+                    const key = line.substring(0, separatorIndex);
+                    const value = line.substring(separatorIndex + 1);
+                    // nur eigene, gültige Einträge übernehmen - sonst landet unsichtbarer Müll im Storage
+                    if (!key.startsWith("Ausgabe#") || !parseEntry(value)) { skippedCount++; return; }
+                    localStorage.setItem(key, value);
+                    successCount++;
                 });
-                alert(`${successCount} Einträge erfolgreich im LocalStorage gespeichert!`);
+                showInfo(`${successCount} Einträge importiert${skippedCount ? `, ${skippedCount} übersprungen` : ''}.`, false);
                 fileInput.value = ''; // Setzt das Feld zurück, damit dieselbe Datei direkt nochmals gewählt werden kann
                 updateSchulden();
                 openTab('historyTab');
@@ -260,7 +263,9 @@
             document.getElementById('zeitpunkt').value = zeitpunkt;
             document.getElementById('amount').value = add(a, d);
             document.getElementById('beschreibung').value = b;
-            document.getElementById('kategorie').value = k;
+            const kategorie = document.getElementById('kategorie');
+            kategorie.value = k;
+            if (!kategorie.value) kategorie.value = 'Sonstiges'; // unbekannte Kategorie -> Fallback
             document.getElementById('zahlungRadio').checked = true;
             if (p != null) document.getElementById(p == 'A' ? 'andreasRadio' : 'dagmarRadio').checked = true; // wenn Payer übergeben wurde update den Radio-Button
             openTab('zahlungTab');
@@ -296,8 +301,7 @@
             // Der CSS-Hack (pointer-events) blockiert nur Mausklicks, daher hier auch für Tastatur prüfen
             const form = document.getElementById('splitForm');
             if (!form.checkValidity() || !document.querySelector('input[name="payer"]:checked')) {
-                document.getElementById('infoText').textContent = "Bitte zuerst eine Person und einen gültigen Betrag wählen";
-                document.getElementById('infoText').className = "";
+                showInfo("Bitte zuerst eine Person und einen gültigen Betrag wählen", true);
                 return;
             }
             const editId = editIdDiv.innerText !== "" ? editIdDiv.innerText : "Ausgabe#" + document.getElementById('zeitpunkt').value.replace("T", " ") + "#" + Date.now();
@@ -310,10 +314,8 @@
                 k: document.getElementById('kategorie').value,
                 s: document.getElementById('andreasRadio').checked ? -dFloat : +aFloat, // wenn A wird der D Betrag mit - eingetragen (- sind Schulden von D bei A). wenn D wird der A Betrag mit + eingetragen (+ sind Schulden von A bei D)
             }));
-            document.getElementById('infoText').textContent = "Ausgabe wurde gespeichert und kann bis auf den Zeitpunkt editiert werden";
-            document.getElementById('infoText').className = "";
-            document.getElementById('infoText').offsetHeight; // trigger reflow https://stackoverflow.com/a/45036752
-            document.getElementById('infoText').className = "fadeout";
+
+            showInfo("Ausgabe wurde gespeichert und kann bis auf den Zeitpunkt editiert werden", true);
             updateSchulden();
             exportLocalStorage();
             neuClick(); // Formular zurücksetzen, sonst legt ein zweites Speichern ein Duplikat an
@@ -363,6 +365,14 @@
             andreasShareInput.disabled = false;
             dagmarShareInput.disabled = false;
         }
+        function showInfo(text, fadeout) {
+            document.getElementById('infoText').textContent = text;
+            document.getElementById('infoText').className = "";
+            if (fadeout) {
+                document.getElementById('infoText').offsetHeight; // trigger reflow https://stackoverflow.com/a/45036752
+                document.getElementById('infoText').className = "fadeout";
+            }
+        }
         // Support for swiping left/right
         let start = null;
         window.addEventListener("touchstart", function (event) {
@@ -392,6 +402,12 @@
                 navigator.serviceWorker.register('./serviceworker.js')
                     .then((reg) => console.log('Service Worker erfolgreich registriert!', reg.scope))
                     .catch((err) => console.error('Service Worker Registrierung fehlgeschlagen:', err));
+            });
+        }
+        // Persistente Speicherung anfragen, damit der Browser die Daten nicht bei Platzmangel löscht
+        if (navigator.storage && navigator.storage.persist) {
+            navigator.storage.persist().then((persistent) => {
+                showInfo('Persistenter Speicher: ' + (persistent ? 'gewährt' : 'nicht gewährt'), true);
             });
         }
     </script>
