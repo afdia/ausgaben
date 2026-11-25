@@ -70,6 +70,10 @@
             opacity: 0;
             transition: opacity 2s linear 1s; /* 1s sichtbar, dann in 2s ausblenden */
         }
+
+        body.download-banner {
+            padding-top: 5rem; /* Platz für Chromes Download-Banner oben, damit Saldo/Infotext sichtbar bleiben */
+        }
     </style>
 </head>
 
@@ -321,13 +325,17 @@
             neuClick(); // Formular zurücksetzen, sonst legt ein zweites Speichern ein Duplikat an
             document.getElementById('historyRadio').click();
         }
+        let downloadBannerTimer;
         function exportLocalStorage() {
             const downloadContent = readLocalStorage().map(e => e[0] + "=" + e[1]).join("\n"); // relevanter localstorage content als key=value file
             const link = document.createElement("a");
             link.href = URL.createObjectURL(new Blob([downloadContent], { type: "text/plain" }));
             link.download = `ausgaben_export_${new Date().toLocaleString('sv-SE').replace(' ', '_').replace(/:/g, '-')}.bak.txt`; // erzeuge Filesystem kompatibles Datum. sv-SE weil dort YYYY-MM-DD und nicht DD.MM.YYYY das Format ist
             document.body.appendChild(link);
+            document.body.classList.add('download-banner'); // vor dem Klick, damit der Platz schon da ist, wenn Chrome das Banner einblendet
             link.click();
+            clearTimeout(downloadBannerTimer); // mehrere Exporte kurz hintereinander: Timer neu starten
+            downloadBannerTimer = setTimeout(() => document.body.classList.remove('download-banner'), 8000);
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
         }
